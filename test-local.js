@@ -1,4 +1,7 @@
 const { handler } = require('./src/index');
+const { getScreenshot } = require('./src/services/screenshotService');
+const path = require('path');
+const fs = require('fs');
 
 const EMOJI = {
   START: '🚀',
@@ -10,8 +13,18 @@ const EMOJI = {
 };
 
 async function runTest() {
-  console.log(`\n${EMOJI.START} Starting Local Test Run...\n------------------------------------`);
   try {
+    console.log('🚀 Starting Local Test Run...');
+    console.log('------------------------------------\n');
+
+    // Save the screenshot for verification
+    const screenshot = await getScreenshot();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const screenshotPath = path.join(__dirname, `screenshot-${timestamp}.png`);
+    fs.writeFileSync(screenshotPath, screenshot);
+    console.log(`📸 Screenshot saved to: ${screenshotPath}`);
+    console.log('🔍 You can open this screenshot to verify the numbers match\n');
+
     const result = await handler({}, {});
     if (result.statusCode === 200) {
       console.log(`\n------------------------------------\n${EMOJI.SUCCESS} Local Test Completed Successfully!`);

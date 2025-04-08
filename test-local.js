@@ -1,72 +1,129 @@
-const { handler } = require('./src/index');
 const { getScreenshot } = require('./src/services/screenshotService');
+const { performOcr, analyzeExtractedText } = require('./src/services/openaiService');
+const { sendToTelegram } = require('./src/services/telegramService');
 const path = require('path');
 const fs = require('fs');
 
 const EMOJI = {
   START: '🚀',
   SCREENSHOT: '📸',
-  ANALYSIS: '🧠',
+  OCR: '📄',
   TELEGRAM: '✉️',
   SUCCESS: '✅',
   ERROR: '❌',
 };
 
-async function runTest() {
-  try {
-    console.log('🚀 Starting Local Test Run...');
-    console.log('------------------------------------\n');
+// --- Copied from test-comparison.js ---
+// Helper function to format volume for display (e.g., $11,501,006 -> $11.5M)
+function formatVolumeForDisplay(rawVolume) {
+  if (!rawVolume || typeof rawVolume !== 'string') return rawVolume; // Return original if invalid
 
-    // Save the screenshot for verification
-    const screenshot = await getScreenshot();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const screenshotPath = path.join(__dirname, `screenshot-${timestamp}.png`);
-    fs.writeFileSync(screenshotPath, screenshot);
-    console.log(`📸 Screenshot saved to: ${screenshotPath}`);
-    console.log('🔍 You can open this screenshot to verify the numbers match\n');
+  // Remove '$', ' Vol', commas, and any other non-numeric chars except '.'
+  const numericString = rawVolume.replace(/[^\d.]/g, '');
+  const number = parseFloat(numericString);
 
-    const result = await handler({}, {});
-    if (result.statusCode === 200) {
-      console.log(`\n------------------------------------\n${EMOJI.SUCCESS} Local Test Completed Successfully!`);
-      // Optionally log the final data from the result body
-      // const data = JSON.parse(result.body);
-      // console.log("Final Data:", data.data);
-    } else {
-      console.error(`\n------------------------------------\n${EMOJI.ERROR} Local Test Failed (Handler returned status ${result.statusCode})`);
-    }
-    console.log("Handler Result:", result);
+  if (isNaN(number)) return rawVolume; // Return original if parsing failed
 
-  } catch (error) {
-    console.error(`\n------------------------------------\n${EMOJI.ERROR} Local Test Failed (Unhandled Exception):`, error);
+  if (number >= 1000000) {
+    return `$${(number / 1000000).toFixed(1)}M`;
+  } else if (number >= 1000) {
+    return `$${(number / 1000).toFixed(1)}K`;
+  } else {
+    return `$${number}`; // Return number as is if less than 1000
   }
 }
 
-// Enhance console logging within the handler itself (modify src/index.js)
-// This part is conceptual, actual changes need to be made in src/index.js
-/*
-// Example modifications in src/index.js:
-exports.handler = async (event, context) => {
-  console.log(`${EMOJI.START} Lambda Handler Invoked`);
+async function analyzeWithOcr(screenshot) {
+  // Save the screenshot for inspection
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const screenshotPath = path.join(__dirname, `screenshot-${timestamp}.png`);
+  fs.writeFileSync(screenshotPath, screenshot);
+  console.log(`\n Saved screenshot to: ${screenshotPath}`);
+
+  const extractedText = await performOcr(screenshot);
+  const analyzedDataOcr = await analyzeExtractedText(extractedText);
+
+  return analyzedDataOcr;
+}
+// --- End Copied Section ---
+
+async function runTest() {
   try {
+    console.log(`${EMOJI.START} Starting Local OCR Test Run...`);
+    console.log('------------------------------------\n');
+
+    // Get screenshot
     console.log(`${EMOJI.SCREENSHOT} Fetching screenshot...`);
     const screenshot = await getScreenshot();
-    console.log(`${EMOJI.SCREENSHOT} Screenshot captured successfully.`);
+    console.log(`${EMOJI.SCREENSHOT} Screenshot captured successfully.\n`);
 
-    console.log(`${EMOJI.ANALYSIS} Analyzing screenshot with OpenAI...`);
-    const analyzedData = await analyzeScreenshot(screenshot);
-    console.log(`${EMOJI.ANALYSIS} Screenshot analyzed successfully.`); // Remove data log here, handler result shows it
+    // Test OCR Approach (using copied analyzeWithOcr)
+    console.log(`${EMOJI.OCR} Testing OCR Approach...`);
+    const ocrStart = Date.now();
+    const analyzedDataOcr = await analyzeWithOcr(screenshot);
+    const ocrEnd = Date.now();
+    console.log(`${EMOJI.OCR} OCR Analysis completed in ${ocrEnd - ocrStart}ms`);
+    console.log('OCR Results:', analyzedDataOcr);
 
-    console.log(`${EMOJI.TELEGRAM} Sending data to Telegram...`);
-    await sendToTelegram(analyzedData);
-    console.log(`${EMOJI.TELEGRAM} Data sent to Telegram successfully.`);
+    console.log('\nSummary:');
+    console.log('------------------------------------');
+    console.log(`OCR Time: ${ocrEnd - ocrStart}ms`);
+    console.log('------------------------------------');
 
-    return { statusCode: 200, ... };
+    // Add timestamp and send FORMATTED results to Telegram
+    const now = new Date();
+    const options = { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      timeZone: 'America/Denver',
+      timeZoneName: 'short'
+    };
+
+    // Ensure OCR data is complete
+    if (!analyzedDataOcr || typeof analyzedDataOcr !== 'object' || analyzedDataOcr.odds === undefined || analyzedDataOcr.volume === undefined) { 
+        throw new Error('Incomplete data from OCR analysis.');
+    }
+    analyzedDataOcr.timestamp = now.toLocaleString('en-US', options);
+
+    // Format data specifically for Telegram
+    const telegramData = { 
+        ...analyzedDataOcr,
+        volume: formatVolumeForDisplay(analyzedDataOcr.volume)
+    };
+    
+    console.log(`\n${EMOJI.TELEGRAM} Sending formatted OCR results to Telegram...`);
+    await sendToTelegram(telegramData); // Send FORMATTED data
+    console.log(`${EMOJI.TELEGRAM} Message sent successfully.`);
+
+    console.log(`\n------------------------------------\n${EMOJI.SUCCESS} Local OCR Test Completed Successfully!`);
+
+    // Mimic handler result structure for consistency in logging
+    const result = {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'Local OCR test completed successfully',
+        ocr: analyzedDataOcr, // Return ORIGINAL OCR data
+        timing: { ocr: ocrEnd - ocrStart }
+      })
+    };
+    console.log('\nFinal Result (Mimicking Handler Output):', result);
+
   } catch (error) {
-    console.error(`${EMOJI.ERROR} Error during execution:`, error.message);
-    return { statusCode: 500, ... };
+    console.error(`\n${EMOJI.ERROR} Error during local test execution:`, error.message);
+    console.log(`\n------------------------------------\n${EMOJI.ERROR} Local OCR Test Failed!`);
+    // Log an error result object similar to the success case
+    const errorResult = {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: "Local OCR test failed",
+        error: error.message
+      })
+    };
+    console.log('\nFinal Result (Mimicking Handler Output):', errorResult);
   }
-};
-*/
+}
 
 // Run the test
-runTest(); 
+runTest();

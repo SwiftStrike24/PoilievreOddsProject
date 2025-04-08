@@ -11,17 +11,17 @@ async function sendToTelegram(data) {
     throw new Error('Telegram Bot Token or Chat ID is not configured.');
   }
 
-  const { odds, trend, volume, timestamp } = data;
+  const { odds, volume, timestamp } = data;
 
   // Basic validation of input data
-  if (!odds || !trend || !volume || !timestamp) {
+  if (!odds || !volume || !timestamp) {
     console.warn('Incomplete data received for Telegram message:', data);
     throw new Error('Incomplete data for Telegram notification.');
   }
 
   const message = `
 📊 Pierre Poilievre Odds Update (Polymarket)
-Current: ${odds} | Trend: ${trend}
+Current: ${odds}
 Volume: ${volume}
 Updated: ${timestamp}
   `.trim();

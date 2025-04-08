@@ -52,12 +52,13 @@ async function analyzeExtractedText(extractedText) {
           content: [
             {
               type: 'text',
-              text: `From the following text extracted from a Polymarket screenshot, find these values for Pierre Poilievre:
-1. Current odds (e.g., "30¢")
-2. Trend (e.g., "▲ +1¢", "▼ -2¢", "― 0¢")
-3. Volume (e.g., "$10.9M")
+              text: `From the text below, extracted from a Polymarket screenshot, find the data ONLY for the row containing "Pierre Poilievre":
+1.  **Odds:** Find the numerical value associated with Poilievre's odds. If the text shows a percentage (%), RETURN IT AS CENTS (¢). The final format MUST be "XX¢".
+2.  **Volume:** Find the total volume traded, located in the same row. **Extract the EXACT string as it appears**, including the '$' sign, any commas (,), decimals (.), and any 'M' or 'K' suffix (e.g., "$11,456,789", "$11.4M"). Do not reformat or summarize it. Return null if not found.
 
-Respond ONLY with a valid JSON object containing these extracted values. If a value cannot be found, use null.
+Carefully parse the line associated with Pierre Poilievre to extract these values accurately.
+
+Respond ONLY with a valid JSON object using the keys "odds" and "volume". Use null if a value cannot be definitively found.
 
 Extracted Text:
 \`\`\`
@@ -66,8 +67,7 @@ ${extractedText}
 
 JSON Output:
 {
-  "odds": "<extracted_odds_or_null>",
-  "trend": "<extracted_trend_or_null>",
+  "odds": "<corrected_odds_in_cents_or_null>",
   "volume": "<extracted_volume_or_null>"
 }`
             },

@@ -17,6 +17,7 @@
     "dotenv": "^16.4.7",
     "openai": "^4.92.1",
     "playwright": "^1.51.1",
-    "playwright-aws-lambda": "^0.11.0"
+    "playwright-aws-lambda": "^0.11.0",
+    "tesseract.js": "^6.0.1"
   }
 }

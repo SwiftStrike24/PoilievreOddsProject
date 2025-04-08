@@ -60,7 +60,7 @@ Before running the application, you need to configure your API keys and settings
       openaiApiKey: 'YOUR_OPENAI_API_KEY', // Replace with your actual OpenAI API key
       telegramBotToken: 'YOUR_TELEGRAM_BOT_TOKEN', // Replace with your Telegram Bot Token
       telegramChatId: 'YOUR_TELEGRAM_CHAT_ID', // Replace with the target Telegram Chat ID
-      polymarketUrl: 'https://polymarket.com/event/pierre-poilievre-prime-minister-of-canada-after-next-federal-election' // The specific market URL
+      polymarketUrl: 'https://polymarket.com/event/next-prime-minster-of-canada?tid=1744073509392' // The specific market URL
     };
     ```
 
